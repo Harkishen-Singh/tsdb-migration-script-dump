@@ -3,7 +3,7 @@
 -- Caggs will be compared after migration
 
 -- Number of hypertables on which toolkit functions based Caggs should be applied. Must be <= than hypertables created in base script.
-\set num_hypertables 5
+\set num_hypertables 2
 \set gapfilling_start_ts '2023-01-01'
 \set gapfilling_end_ts '2023-01-07'
 -- Same as in base table.
@@ -28,14 +28,14 @@ BEGIN
             FROM %I.table_%s
             GROUP BY 1 ORDER BY 1 DESC
             WITH NO DATA;
-        $sql$, schema_name, i, schema_name, i);
+        $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
         SELECT add_continuous_aggregate_policy('%I.cagg_downsampling_asap_smooth_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, i);
+        $sql$, schema_name, count);
 
         RAISE NOTICE 'Completed cagg: %.cagg_downsampling_asap_smooth_%', schema_name, count;
 
@@ -50,14 +50,14 @@ BEGIN
             FROM %I.table_%s
             GROUP BY 1 ORDER BY 1 DESC
             WITH NO DATA;
-        $sql$, schema_name, i, schema_name, i);
+        $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
         SELECT add_continuous_aggregate_policy('%I.cagg_downsampling_lttb_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, i);
+        $sql$, schema_name, count);
 
         RAISE NOTICE 'Completed cagg: %.cagg_downsampling_lttb_%', schema_name, count;
     END LOOP;
@@ -89,14 +89,14 @@ BEGIN
             FROM %I.table_%s
             GROUP BY 1 ORDER BY 1 DESC
             WITH NO DATA;
-        $sql$, schema_name, i, schema_name, i);
+        $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
         SELECT add_continuous_aggregate_policy('%I.cagg_financial_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, i);
+        $sql$, schema_name, count);
 
         RAISE NOTICE 'Completed cagg: %.cagg_financial_%', schema_name, count;
     END LOOP;
@@ -125,14 +125,14 @@ BEGIN
             FROM %I.table_%s
             GROUP BY 1 ORDER BY 1 DESC
             WITH NO DATA;
-        $sql$, schema_name, i, schema_name, i);
+        $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
         SELECT add_continuous_aggregate_policy('%I.cagg_statistical_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, i);
+        $sql$, schema_name, count);
 
         RAISE NOTICE 'Completed cagg: %.cagg_statistical_%', schema_name, count;
     END LOOP;
