@@ -20,7 +20,7 @@ BEGIN
         -- Downsampling using asap_sooth.
         EXECUTE format(
         $sql$
-            CREATE MATERIALIZED VIEW %I.cagg_downsampling_asap_smooth_%s WITH (timescaledb.continuous) AS
+            CREATE MATERIALIZED VIEW %I.toolkit_cagg_downsampling_asap_smooth_%s WITH (timescaledb.continuous) AS
             SELECT
                 time_bucket('1 day', time) AS day,
                 (unnest(asap_smooth(time, col1, 8))).time as actual_time,
@@ -31,18 +31,18 @@ BEGIN
         $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
-        SELECT add_continuous_aggregate_policy('%I.cagg_downsampling_asap_smooth_%s',
+        SELECT add_continuous_aggregate_policy('%I.toolkit_cagg_downsampling_asap_smooth_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
         $sql$, schema_name, count);
 
-        RAISE NOTICE 'Completed cagg: %.cagg_downsampling_asap_smooth_%', schema_name, count;
+        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_downsampling_asap_smooth_%', schema_name, count;
 
         -- Downsampling using lttb.
         EXECUTE format(
         $sql$
-            CREATE MATERIALIZED VIEW %I.cagg_downsampling_lttb_%s WITH (timescaledb.continuous) AS
+            CREATE MATERIALIZED VIEW %I.tookkit_cagg_downsampling_lttb_%s WITH (timescaledb.continuous) AS
             SELECT
                 time_bucket('1 day', time) AS day,
                 (unnest(lttb(time, col1, 8))).time as actual_time,
@@ -53,13 +53,13 @@ BEGIN
         $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
-        SELECT add_continuous_aggregate_policy('%I.cagg_downsampling_lttb_%s',
+        SELECT add_continuous_aggregate_policy('%I.tookkit_cagg_downsampling_lttb_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
         $sql$, schema_name, count);
 
-        RAISE NOTICE 'Completed cagg: %.cagg_downsampling_lttb_%', schema_name, count;
+        RAISE NOTICE 'Completed cagg: %.tookkit_cagg_downsampling_lttb_%', schema_name, count;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
@@ -76,7 +76,7 @@ BEGIN
     FOR count IN 1..num_hypertables LOOP
         EXECUTE format(
         $sql$
-            CREATE MATERIALIZED VIEW %I.cagg_financial_%s WITH (timescaledb.continuous) AS
+            CREATE MATERIALIZED VIEW %I.toolkit_cagg_financial_%s WITH (timescaledb.continuous) AS
             SELECT
                 time_bucket('1 day'::interval, "time") as day,
                 open(candlestick_agg("time", col1, col2)),
@@ -92,13 +92,13 @@ BEGIN
         $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
-        SELECT add_continuous_aggregate_policy('%I.cagg_financial_%s',
+        SELECT add_continuous_aggregate_policy('%I.toolkit_cagg_financial_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
         $sql$, schema_name, count);
 
-        RAISE NOTICE 'Completed cagg: %.cagg_financial_%', schema_name, count;
+        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_financial_%', schema_name, count;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
@@ -115,7 +115,7 @@ BEGIN
     FOR count IN 1..num_hypertables LOOP
         EXECUTE format(
         $sql$
-            CREATE MATERIALIZED VIEW %I.cagg_statistical_%s WITH (timescaledb.continuous) AS
+            CREATE MATERIALIZED VIEW %I.toolkit_cagg_statistical_%s WITH (timescaledb.continuous) AS
             SELECT
                 time_bucket('1 day', time) as day,
                 sum(stats_agg(col1)),
@@ -128,13 +128,13 @@ BEGIN
         $sql$, schema_name, count, schema_name, count);
 
         EXECUTE format($sql$
-        SELECT add_continuous_aggregate_policy('%I.cagg_statistical_%s',
+        SELECT add_continuous_aggregate_policy('%I.toolkit_cagg_statistical_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
         $sql$, schema_name, count);
 
-        RAISE NOTICE 'Completed cagg: %.cagg_statistical_%', schema_name, count;
+        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_statistical_%', schema_name, count;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
