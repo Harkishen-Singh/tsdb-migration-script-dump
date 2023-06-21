@@ -9,10 +9,14 @@
 select $help$
 This script needs base.sql to be applied.
 
+Note:
+- 'schema_name' should be same as what was supplied in 'hypertables_schema' in base.sql
+- 'num_hypertables' should be less than or equal to 'num_hypertables' supplied in base.sql
+
 Usage:
-psql -d "URI" -f base.sql \
-    -v schema_name='timeseries' \ # Should be same as what was supplied in 'hypertables_schema' in base.sql
-    -v num_hypertables=20 \ # Should be less than or equal to 'num_hypertables' supplied in base.sql
+psql -d "URI" -f reorder_policy.sql \
+    -v schema_name='timeseries' \
+    -v num_hypertables=20 \
 
 $help$ as help_output
 \gset
@@ -57,6 +61,6 @@ SELECT
     scheduled,
     fixed_schedule,
     config
-FROM timescaledb_information.jobs j JOIN timescaledb_information.job_stats js ON j.job_id = js.job_id
+FROM timescaledb_information.jobs j
 WHERE application_name LIKE 'Reorder Policy%'
 ORDER BY 1 DESC;

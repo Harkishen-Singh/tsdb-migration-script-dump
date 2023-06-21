@@ -5,10 +5,14 @@
 select $help$
 This script needs base.sql to be applied.
 
+Note:
+- 'schema_name' should be same as what was supplied in 'hypertables_schema' in base.sql
+- 'num_hypertables' should be less than or equal to 'num_hypertables' supplied in base.sql
+
 Usage:
-psql -d "URI" -f base.sql \
-    -v schema_name='timeseries' \ # Should be same as what was supplied in 'hypertables_schema' in base.sql
-    -v num_hypertables=20 \ # Should be less than or equal to 'num_hypertables' supplied in base.sql
+psql -d "URI" -f toolkit.sql \
+    -v schema_name='timeseries' \
+    -v num_hypertables=20 \
     -v gapfilling_start_ts='2023-01-01' \
     -v gapfilling_end_ts='2023-03-31'
 
@@ -21,6 +25,8 @@ $help$ as help_output
 \echo :help_output
 \q
 \endif
+
+CREATE EXTENSION IF NOT EXISTS timescaledb_toolkit;
 
 CREATE OR REPLACE FUNCTION create_financial_analysis_matviews(
     num_hypertables INTEGER,
