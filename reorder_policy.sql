@@ -3,11 +3,26 @@
 -- only when we want to.
 --
 -- Following function creates reordering policies on the Hypertables created in the base script.
--- Make sure to pass the num_hypertables_in_base & schema_name same as the values passed for
+-- Make sure to pass the num_hypertables & schema_name same as the values passed for
 -- the base script.
 
-\set num_hypertables_in_base 2
-\set schema_name 'timeseries'
+select $help$
+This script needs base.sql to be applied.
+
+Usage:
+psql -d "URI" -f base.sql \
+    -v schema_name='timeseries' \ # Should be same as what was supplied in 'hypertables_schema' in base.sql
+    -v num_hypertables=20 \ # Should be less than or equal to 'num_hypertables' supplied in base.sql
+
+$help$ as help_output
+\gset
+
+--------------------------------------------------------------------------------
+-- display help and exit?
+\if :{?help}
+\echo :help_output
+\q
+\endif
 
 CREATE OR REPLACE FUNCTION create_reorder_policies(
     num_hypertables INTEGER,
@@ -30,7 +45,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT create_reorder_policies(:'num_hypertables_in_base', :'schema_name');
+SELECT create_reorder_policies(:'num_hypertables', :'schema_name');
 
 SELECT
 	j.job_id,

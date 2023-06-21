@@ -2,69 +2,25 @@
 -- This is done by creating Caggs using toolkit functions as we would expect the users to do. These
 -- Caggs will be compared after migration
 
--- Number of hypertables on which toolkit functions based Caggs should be applied. Must be <= than hypertables created in base script.
-\set num_hypertables 2
-\set gapfilling_start_ts '2023-01-01'
-\set gapfilling_end_ts '2023-01-07'
--- Same as in base table.
-\set schema_name 'timeseries'
+select $help$
+This script needs base.sql to be applied.
 
-CREATE OR REPLACE FUNCTION create_downsampling_matviews(
-    num_hypertables INTEGER,
-    schema_name VARCHAR
-) RETURNS VOID AS $$
-DECLARE
-    count integer;
-BEGIN
-    FOR count IN 1..num_hypertables LOOP
-        -- Downsampling using asap_sooth.
-        EXECUTE format(
-        $sql$
-            CREATE MATERIALIZED VIEW %I.toolkit_cagg_downsampling_asap_smooth_%s WITH (timescaledb.continuous) AS
-            SELECT
-                time_bucket('1 day', time) AS day,
-                (unnest(asap_smooth(time, col1, 8))).time as actual_time,
-                (unnest(asap_smooth(time, col1, 8))).value as value
-            FROM %I.table_%s
-            GROUP BY 1 ORDER BY 1 DESC
-            WITH NO DATA;
-        $sql$, schema_name, count, schema_name, count);
+Usage:
+psql -d "URI" -f base.sql \
+    -v schema_name='timeseries' \ # Should be same as what was supplied in 'hypertables_schema' in base.sql
+    -v num_hypertables=20 \ # Should be less than or equal to 'num_hypertables' supplied in base.sql
+    -v gapfilling_start_ts='2023-01-01' \
+    -v gapfilling_end_ts='2023-03-31'
 
-        EXECUTE format($sql$
-        SELECT add_continuous_aggregate_policy('%I.toolkit_cagg_downsampling_asap_smooth_%s',
-                start_offset => INTERVAL '1 week',
-                end_offset => INTERVAL '1 day',
-                schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, count);
+$help$ as help_output
+\gset
 
-        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_downsampling_asap_smooth_%', schema_name, count;
-
-        -- Downsampling using lttb.
-        EXECUTE format(
-        $sql$
-            CREATE MATERIALIZED VIEW %I.tookkit_cagg_downsampling_lttb_%s WITH (timescaledb.continuous) AS
-            SELECT
-                time_bucket('1 day', time) AS day,
-                (unnest(lttb(time, col1, 8))).time as actual_time,
-                (unnest(lttb(time, col1, 8))).value as value
-            FROM %I.table_%s
-            GROUP BY 1 ORDER BY 1 DESC
-            WITH NO DATA;
-        $sql$, schema_name, count, schema_name, count);
-
-        EXECUTE format($sql$
-        SELECT add_continuous_aggregate_policy('%I.tookkit_cagg_downsampling_lttb_%s',
-                start_offset => INTERVAL '1 week',
-                end_offset => INTERVAL '1 day',
-                schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, count);
-
-        RAISE NOTICE 'Completed cagg: %.tookkit_cagg_downsampling_lttb_%', schema_name, count;
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
-
-SELECT create_downsampling_matviews(:'num_hypertables', :'schema_name');
+--------------------------------------------------------------------------------
+-- display help and exit?
+\if :{?help}
+\echo :help_output
+\q
+\endif
 
 CREATE OR REPLACE FUNCTION create_financial_analysis_matviews(
     num_hypertables INTEGER,

@@ -1,13 +1,36 @@
-\set num_hypertables_to_be_created 10
-\set num_partitions 10
-\set chunk_interval '1 week'
-\set schema_name 'test_add_dimension'
+select $help$
+This script needs base.sql to be pre-applied.
+
+Note:
+- 'common_tables_schema' must be same as 'common_tables_schema' in base.sql
+- 'schema_name' must be different than as what was supplied in 'hypertables_schema' in base.sql
+
+Usage:
+psql -d "URI" -f add_dimension.sql \
+    -v common_tables_schema='common' \
+    -v schema_name='test_add_dimension' \
+    -v num_hypertables=10 \
+    -v chunk_interval='1 week' \
+    -v num_partitions=10
+
+$help$ as help_output
+\gset
+
+--------------------------------------------------------------------------------
+-- display help and exit?
+\if :{?help}
+\echo :help_output
+\q
+\endif
 
 CREATE EXTENSION IF NOT EXISTS TIMESCALEDB;
+
+begin;
 
 CREATE SCHEMA IF NOT EXISTS :schema_name;
 
 CREATE OR REPLACE FUNCTION create_hypertables(
+    common_tables_schema TEXT,
     num_hypertables INTEGER,
     schema_name VARCHAR,
     chunk_interval INTERVAL
@@ -19,14 +42,14 @@ BEGIN
     EXECUTE format('CREATE TABLE %I.dim_table_%s (
                         time timestamptz NOT NULL,
                         series_id integer NOT NULL,
-                        col1 integer REFERENCES common.table1(id),
-                        col2 integer REFERENCES common.table2(id),
-                        col3 integer REFERENCES common.table3(id),
-                        col4 integer REFERENCES common.table4(id),
+                        col1 integer REFERENCES %3$s.table1(id),
+                        col2 integer REFERENCES %3$s.table2(id),
+                        col3 integer REFERENCES %3$s.table3(id),
+                        col4 integer REFERENCES %3$s.table4(id),
                         col5 integer,
                         col6 integer
                     );',
-                    schema_name, count);
+                    schema_name, count, common_tables_schema);
 
     EXECUTE format('SELECT create_hypertable(%L, %L, chunk_time_interval => interval %L);',
                     schema_name || '.dim_table_' || count, 'time', chunk_interval);
@@ -36,10 +59,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT create_hypertables(:'num_hypertables_to_be_created'::INTEGER, :'schema_name'::VARCHAR, :'chunk_interval'::INTERVAL);
+SELECT create_hypertables(
+    :'common_tables_schema'::TEXT,
+    :'num_hypertables'::INTEGER,
+    :'schema_name'::VARCHAR,
+    :'chunk_interval'::INTERVAL);
 
 -- Create compression and retention policies.
-CREATE OR REPLACE FUNCTION create_compression_retention_policies(num_hypertables INTEGER, schema_name VARCHAR)
+CREATE OR REPLACE FUNCTION create_compression_retention_policies_for_add_dim(num_hypertables INTEGER, schema_name VARCHAR)
 RETURNS VOID AS $$
 DECLARE
     count integer;
@@ -59,7 +86,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT create_compression_retention_policies(:'num_hypertables_to_be_created'::INTEGER, :'schema_name'::VARCHAR);
+SELECT create_compression_retention_policies_for_add_dim(:'num_hypertables'::INTEGER, :'schema_name'::VARCHAR);
 
 -- add dimensions to existing hypertables.
 CREATE OR REPLACE FUNCTION add_dimensions_to_hypertables(
@@ -79,7 +106,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 SELECT add_dimensions_to_hypertables(
-    :'num_hypertables_to_be_created'::INTEGER,
+    :'num_hypertables'::INTEGER,
     :'schema_name'::VARCHAR,
     'series_id'::VARCHAR,
     :'num_partitions'::INTEGER);
@@ -96,3 +123,4 @@ ON
     h.id = d.hypertable_id
 WHERE
     h.schema_name = :'schema_name';
+
