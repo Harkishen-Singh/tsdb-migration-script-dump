@@ -6,12 +6,12 @@ select $help$
 This script needs base.sql to be applied.
 
 Note:
-- 'schema_name' should be same as what was supplied in 'hypertables_schema' in base.sql
+- 'hypertables_schema' should be same as what was supplied in 'hypertables_schema' in base.sql
 - 'num_hypertables' should be less than or equal to 'num_hypertables' supplied in base.sql
 
 Usage:
 psql -d "URI" -f toolkit.sql \
-    -v schema_name='timeseries' \
+    -v hypertables_schema='timeseries' \
     -v num_hypertables=20 \
     -v gapfilling_start_ts='2023-01-01' \
     -v gapfilling_end_ts='2023-03-31'
@@ -30,7 +30,7 @@ CREATE EXTENSION IF NOT EXISTS timescaledb_toolkit;
 
 CREATE OR REPLACE FUNCTION create_financial_analysis_matviews(
     num_hypertables INTEGER,
-    schema_name VARCHAR
+    hypertables_schema VARCHAR
 ) RETURNS VOID AS $$
 DECLARE
     count integer;
@@ -51,25 +51,25 @@ BEGIN
             FROM %I.table_%s
             GROUP BY 1 ORDER BY 1 DESC
             WITH NO DATA;
-        $sql$, schema_name, count, schema_name, count);
+        $sql$, hypertables_schema, count, hypertables_schema, count);
 
         EXECUTE format($sql$
         SELECT add_continuous_aggregate_policy('%I.toolkit_cagg_financial_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, count);
+        $sql$, hypertables_schema, count);
 
-        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_financial_%', schema_name, count;
+        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_financial_%', hypertables_schema, count;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT create_financial_analysis_matviews(:'num_hypertables', :'schema_name');
+SELECT create_financial_analysis_matviews(:'num_hypertables', :'hypertables_schema');
 
 CREATE OR REPLACE FUNCTION create_statistical_analysis_matviews(
     num_hypertables INTEGER,
-    schema_name VARCHAR
+    hypertables_schema VARCHAR
 ) RETURNS VOID AS $$
 DECLARE
     count integer;
@@ -87,18 +87,18 @@ BEGIN
             FROM %I.table_%s
             GROUP BY 1 ORDER BY 1 DESC
             WITH NO DATA;
-        $sql$, schema_name, count, schema_name, count);
+        $sql$, hypertables_schema, count, hypertables_schema, count);
 
         EXECUTE format($sql$
         SELECT add_continuous_aggregate_policy('%I.toolkit_cagg_statistical_%s',
                 start_offset => INTERVAL '1 week',
                 end_offset => INTERVAL '1 day',
                 schedule_interval => INTERVAL '1 day');
-        $sql$, schema_name, count);
+        $sql$, hypertables_schema, count);
 
-        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_statistical_%', schema_name, count;
+        RAISE NOTICE 'Completed cagg: %.toolkit_cagg_statistical_%', hypertables_schema, count;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT create_statistical_analysis_matviews(:'num_hypertables', :'schema_name');
+SELECT create_statistical_analysis_matviews(:'num_hypertables', :'hypertables_schema');

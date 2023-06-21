@@ -11,6 +11,7 @@ psql -d "URI" -f base.sql \
     -v num_common_tables=10 \
     -v hypertables_schema='timeseries' \
     -v num_hypertables=20 \
+    -v ignore_compression_policies=1 \
     -v chunk_interval='1 week' \
     -v start_time='2023-01-01' \
     -v end_time='2023-03-31'
@@ -45,6 +46,9 @@ Supported flags:
     end_time [required]
         Write until 'end_time' time.
         Eg: '2023-03-01'
+
+    ignore_compression_policies [optional]
+        Do not create compression policies for Hypertables.
 
     help [optional]
         prints this message describing the script
@@ -90,7 +94,7 @@ BEGIN
       $sql$, i, common_tables_schema, i, i);
 
     -- Insert data into the tables
-    FOR j IN 1..100000 LOOP
+    FOR j IN 1..1000000 LOOP
       EXECUTE format(
         $sql$
         INSERT INTO %s.table%s (column1, column2, column3, column4, column5, column6, column7, column8, column9, column10)
@@ -176,7 +180,7 @@ SELECT create_hypertables_and_insert_data(
 );
 
 -- Create compression and retention policies.
-CREATE OR REPLACE FUNCTION create_compression_retention_policies(num_hypertables INTEGER, hypertables_schema VARCHAR)
+CREATE OR REPLACE FUNCTION create_compression_retention_policies(num_hypertables INTEGER, hypertables_schema VARCHAR, ignore_compression BOOLEAN)
 RETURNS VOID AS $$
 DECLARE
     count integer;
@@ -184,9 +188,11 @@ BEGIN
     FOR count IN 1..num_hypertables LOOP
         EXECUTE format($sql$ ALTER TABLE %s SET (timescaledb.compress, timescaledb.compress_segmentby = 'series_id, col1, col2, col3, col4, col5, col6, col7, col8') $sql$, hypertables_schema || '.table_' || count);
 
-        -- Add a compression policy to compress chunks older than 1 week
-        EXECUTE format('SELECT add_compression_policy(%L, INTERVAL %L)',
-                        hypertables_schema || '.table_' || count, '1 week');
+        IF NOT ignore_compression THEN
+            -- Add a compression policy to compress chunks older than 1 week
+            EXECUTE format('SELECT add_compression_policy(%L, INTERVAL %L)',
+                            hypertables_schema || '.table_' || count, '1 week');
+        END IF;
 
         -- Add a retention policy to drop chunks older than 5 years
         EXECUTE format('SELECT add_retention_policy(%L, INTERVAL %L)',
@@ -196,9 +202,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT create_compression_retention_policies(:'num_hypertables'::INTEGER, :'hypertables_schema'::VARCHAR);
-
-
+\if :{?ignore_compression_policies}
+    SELECT create_compression_retention_policies(:'num_hypertables'::INTEGER, :'hypertables_schema'::VARCHAR, TRUE);
+\else
+    SELECT create_compression_retention_policies(:'num_hypertables'::INTEGER, :'hypertables_schema'::VARCHAR, FALSE);
+\endif
 
 -- Let's add continuous policies.
 CREATE OR REPLACE FUNCTION create_continuous_agg_policies(IN num_hypertables INTEGER, IN hypertables_schema VARCHAR)
