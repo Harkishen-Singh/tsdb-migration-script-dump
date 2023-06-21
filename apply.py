@@ -1,3 +1,20 @@
+"""
+Usage:
+
+python3 apply.py "postgres://tsdbadmin:AVNS_-fWVtE7G7bAAVo5NOQd@hypershift-mst-source-timescale-87a9.a.timescaledb.io:12329/test_large_1?sslmode=require"
+    --common_tables_schema='common' \
+    --num_common_tables=20 \
+    --hypertables_schema='timeseries' \
+    --num_hypertables=20 \
+    --chunk_interval='1 week' \
+    --start_time='2021-01-01' \
+    --end_time='2023-01-31' \
+    --dim_schema_name='test_add_dim' \
+    --num_partitions=10 \
+    --gapfilling_start_ts='2022-01-01' \
+    --gapfilling_end_ts='2022-06-01'
+"""
+
 import argparse
 import subprocess
 
