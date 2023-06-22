@@ -96,7 +96,7 @@ BEGIN
 
     -- Insert data into the tables
     IF i = 1 THEN
-      FOR j IN 1..100000 LOOP
+      FOR j IN 1..1000000 LOOP
         EXECUTE format(
           $sql$
           INSERT INTO %s.table%s (column1, column2, column3, column4, column5, column6, column7, column8, column9, column10)
