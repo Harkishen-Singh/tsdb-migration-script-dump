@@ -31,6 +31,7 @@ commands = {
         -v num_hypertables={num_hypertables} \
         {ignore_compression_policies} \
         -v chunk_interval='{chunk_interval}' \
+        -v resolution='{resolution}' \
         -v start_time='{start_time}' \
         -v end_time='{end_time}'
     """,

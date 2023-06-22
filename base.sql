@@ -13,7 +13,7 @@ psql -d "URI" -f base.sql \
     -v num_hypertables=20 \
     -v ignore_compression_policies=1 \
     -v chunk_interval='1 week' \
-    -v resoluton='1 minute' \
+    -v resolution='1 minute' \
     -v start_time='2023-01-01' \
     -v end_time='2023-03-31'
 
