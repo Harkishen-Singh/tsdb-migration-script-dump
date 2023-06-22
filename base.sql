@@ -94,24 +94,29 @@ BEGIN
       $sql$, i, common_tables_schema, i, i);
 
     -- Insert data into the tables
-    FOR j IN 1..1000000 LOOP
-      EXECUTE format(
-        $sql$
-        INSERT INTO %s.table%s (column1, column2, column3, column4, column5, column6, column7, column8, column9, column10)
-        VALUES (
-          floor(random() * 100)::int,
-          md5(random()::text),
-          (CASE floor(random() * 3)::int WHEN 0 THEN 'Type1' WHEN 1 THEN 'Type2' ELSE 'Type3' END)::custom_type_%s,
-          md5(random()::text),
-          (CASE floor(random() * 2)::int WHEN 0 THEN true ELSE false END),
-          current_date,
-          current_time,
-          current_timestamp,
-          json_build_object('key', md5(random()::text)),
-          jsonb_build_object('key', md5(random()::text))
-        );
-        $sql$, common_tables_schema, i, i);
-    END LOOP;
+    IF i = 1 THEN
+      FOR j IN 1..1000000 LOOP
+        EXECUTE format(
+          $sql$
+          INSERT INTO %s.table%s (column1, column2, column3, column4, column5, column6, column7, column8, column9, column10)
+          VALUES (
+            floor(random() * 100)::int,
+            md5(random()::text),
+            (CASE floor(random() * 3)::int WHEN 0 THEN 'Type1' WHEN 1 THEN 'Type2' ELSE 'Type3' END)::custom_type_%s,
+            md5(random()::text),
+            (CASE floor(random() * 2)::int WHEN 0 THEN true ELSE false END),
+            current_date,
+            current_time,
+            current_timestamp,
+            json_build_object('key', md5(random()::text)),
+            jsonb_build_object('key', md5(random()::text))
+          );
+          $sql$, common_tables_schema, i, i);
+      END LOOP;
+    ELSE
+      EXECUTE format('INSERT INTO %s.table%s SELECT * FROM %s.table1;', common_tables_schema, i, common_tables_schema);
+    END IF;
+
     RAISE NOTICE 'Created table common.table%', i;
   END LOOP;
 END;
@@ -141,29 +146,34 @@ BEGIN
                 col2 integer REFERENCES %3$s.table2(id),
                 col3 integer REFERENCES %3$s.table3(id),
                 col4 integer REFERENCES %3$s.table4(id),
-                col5 integer REFERENCES %3$s.table5(id),
-                col6 integer REFERENCES %3$s.table6(id),
-                col7 integer REFERENCES %3$s.table7(id),
-                col8 integer REFERENCES %3$s.table8(id)
+                col5 integer,
+                col6 integer,
+                col7 integer,
+                col8 integer
             );',
             hypertables_schema, count, common_tables_schema);
 
-        EXECUTE format('SELECT create_hypertable(%L, %L, chunk_time_interval => interval %L);',
-                        hypertables_schema || '.table_' || count, 'time', chunk_interval);
+        IF count = 1 THEN
+            EXECUTE format('INSERT INTO %I.table_%s (time, series_id, col1, col2, col3, col4, col5, col6, col7, col8)
+                SELECT
+                    generate_series(TIMESTAMP %L, TIMESTAMP %L, interval %L) AS time,
+                    ceil(random() * 100)::integer AS series_id,
+                    ceil(random() * 100)::integer AS col1,
+                    ceil(random() * 100)::integer AS col2,
+                    ceil(random() * 100)::integer AS col3,
+                    ceil(random() * 100)::integer AS col4,
+                    ceil(random() * 100)::integer AS col5,
+                    ceil(random() * 100)::integer AS col6,
+                    ceil(random() * 100)::integer AS col7,
+                    ceil(random() * 100)::integer AS col8;',
+            hypertables_schema, count, start_time, end_time, '1 minute');
+        ELSE
+            EXECUTE format('INSERT INTO %I.table_%s SELECT * FROM %I.table_1;',
+            hypertables_schema, count, hypertables_schema);
+        END IF;
 
-        EXECUTE format('INSERT INTO %I.table_%s (time, series_id, col1, col2, col3, col4, col5, col6, col7, col8)
-            SELECT
-                generate_series(TIMESTAMP %L, TIMESTAMP %L, interval %L) AS time,
-                ceil(random() * 100)::integer AS series_id,
-                ceil(random() * 100)::integer AS col1,
-                ceil(random() * 100)::integer AS col2,
-                ceil(random() * 100)::integer AS col3,
-                ceil(random() * 100)::integer AS col4,
-                ceil(random() * 100)::integer AS col5,
-                ceil(random() * 100)::integer AS col6,
-                ceil(random() * 100)::integer AS col7,
-                ceil(random() * 100)::integer AS col8;',
-        hypertables_schema, count, start_time, end_time, '1 minute');
+        EXECUTE format('SELECT create_hypertable(%L, %L, chunk_time_interval => interval %L, migrate_data => true);',
+                hypertables_schema || '.table_' || count, 'time', chunk_interval);
 
         RAISE NOTICE 'Completed hypertable: %.table_%', hypertables_schema, count;
     END LOOP;
@@ -186,7 +196,7 @@ DECLARE
     count integer;
 BEGIN
     FOR count IN 1..num_hypertables LOOP
-        EXECUTE format($sql$ ALTER TABLE %s SET (timescaledb.compress, timescaledb.compress_segmentby = 'series_id, col1, col2, col3, col4, col5, col6, col7, col8') $sql$, hypertables_schema || '.table_' || count);
+        EXECUTE format($sql$ ALTER TABLE %s SET (timescaledb.compress, timescaledb.compress_segmentby = 'series_id, col1, col2, col3, col4') $sql$, hypertables_schema || '.table_' || count);
 
         IF NOT ignore_compression THEN
             -- Add a compression policy to compress chunks older than 1 week
