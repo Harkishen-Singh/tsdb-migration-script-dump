@@ -148,14 +148,16 @@ BEGIN
                 col3 integer REFERENCES %3$s.table3(id),
                 col4 integer REFERENCES %3$s.table4(id),
                 col5 integer,
-                col6 integer,
-                col7 integer,
-                col8 integer
+                col6 jsonb,
+                col7 jsonb,
+                col8 jsonb
             );',
             hypertables_schema, count, common_tables_schema);
 
         IF count = 1 THEN
-            EXECUTE format('INSERT INTO %I.table_%s (time, series_id, col1, col2, col3, col4, col5, col6, col7, col8)
+            EXECUTE format(
+                $sql$
+                INSERT INTO %I.table_%s (time, series_id, col1, col2, col3, col4, col5, col6, col7, col8)
                 SELECT
                     generate_series(TIMESTAMP %L, TIMESTAMP %L, interval %L) AS time,
                     ceil(random() * 100)::integer AS series_id,
@@ -164,9 +166,10 @@ BEGIN
                     ceil(random() * 100)::integer AS col3,
                     ceil(random() * 100)::integer AS col4,
                     ceil(random() * 100)::integer AS col5,
-                    ceil(random() * 100)::integer AS col6,
-                    ceil(random() * 100)::integer AS col7,
-                    ceil(random() * 100)::integer AS col8;',
+                    json_build_object('key', md5(random()::text)) AS col6,
+                    json_build_object('key', md5(random()::text)) AS col7,
+                    json_build_object('key', md5(random()::text)) AS col8;
+                $sql$,
             hypertables_schema, count, start_time, end_time, '1 minute');
         ELSE
             EXECUTE format('INSERT INTO %I.table_%s SELECT * FROM %I.table_1;',
