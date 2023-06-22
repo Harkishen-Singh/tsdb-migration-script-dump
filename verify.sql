@@ -4,7 +4,6 @@
 \t
 
 -- function that gets the schema structure of all tables (plain + hypertables) in the database.
--- usage: SELECT * FROM get_table_information();
 CREATE OR REPLACE FUNCTION get_table_information()
 RETURNS TABLE (
     ret_table_schema text,
@@ -137,3 +136,33 @@ BEGIN
     RETURN QUERY SELECT * FROM temp_sequence_values;
 END
 $$ LANGUAGE plpgsql;
+
+-- Get continuous aggregates.
+SELECT
+    view_owner,
+    view_schema,
+    view_name,
+    hypertable_schema,
+    hypertable_name,
+    compression_enabled,
+    materialization_hypertable_schema,
+    materialization_hypertable_name
+FROM timescaledb_information.continuous_aggregates ORDER BY 1, 2, 3, 4, 5;
+
+-- Get Hypertables.
+SELECT * FROM timescaledb_information.hypertables ORDER BY 1, 2, 3, 4;
+
+-- Get policies along with their statistics.
+SELECT
+    application_name,
+    schedule_interval,
+    max_runtime,
+    proc_schema || '.' || proc_name as proc_schema_and_name,
+    j.hypertable_schema || '.' || j.hypertable_name as hypertable_name_schema,
+    scheduled,
+    fixed_schedule,
+    config,
+    j.next_start is not null next_start_exists,
+    last_run_started_at < last_successful_finish most_recent_job_succeeded
+FROM timescaledb_information.jobs j JOIN timescaledb_information.job_stats js ON j.job_id = js.job_id
+ORDER BY 1, 4, 5;
