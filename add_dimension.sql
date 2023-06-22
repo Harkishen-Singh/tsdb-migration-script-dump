@@ -124,3 +124,33 @@ ON
 WHERE
     h.schema_name = :'schema_name';
 
+-- Add data.
+-- TODO: below function correctness
+-- CREATE OR REPLACE FUNCTION insert_data_for_add_dim(num_hypertables INTEGER, schema_name VARCHAR)
+-- RETURNS VOID AS $$
+-- DECLARE
+--     count integer;
+-- BEGIN
+--     FOR count IN 1..num_hypertables LOOP
+--         IF count = 1 THEN
+--             EXECUTE format(
+--                 $sql$
+--                 INSERT INTO %I.dim_table_%s (time, series_id, col1, col2, col3, col4, col5, col6, col7, col8)
+--                 SELECT
+--                     generate_series(TIMESTAMP %L, TIMESTAMP %L, interval %L) AS time,
+--                     ceil(random() * 100)::integer AS series_id,
+--                     ceil(random() * 100)::integer AS col1,
+--                     ceil(random() * 100)::integer AS col2,
+--                     ceil(random() * 100)::integer AS col3,
+--                     ceil(random() * 100)::integer AS col4,
+--                     ceil(random() * 100)::integer AS col5,
+--                     ceil(random() * 100)::integer AS col6;
+--                 $sql$,
+--             schema_name, count, start_time, end_time, resolution);
+--         ELSE
+--             EXECUTE format('INSERT INTO %I.dim_table_%s SELECT * FROM %I.table_1;',
+--             schema_name, count, schema_name);
+--         END IF;
+--     END LOOP;
+-- END;
+-- $$ LANGUAGE plpgsql;

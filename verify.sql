@@ -1,5 +1,7 @@
 -- For detailed verification, pass -v detail=1
 -- Note: Detailed outputs will be lengthy!
+--
+-- Usage: psql -d "<URI>" -f verify.sql > [source/target]_dump.txt
 
 \t
 
