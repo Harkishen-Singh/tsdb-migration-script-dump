@@ -69,6 +69,8 @@ CREATE EXTENSION IF NOT EXISTS TIMESCALEDB;
 -- Create tables and custom types
 CREATE SCHEMA IF NOT EXISTS :common_tables_schema;
 
+CREATE TYPE custom_type_1 AS ENUM ('Type1', 'Type2', 'Type3');
+
 CREATE OR REPLACE FUNCTION create_common_tables_and_types(common_tables_schema TEXT, num_tables INTEGER)
 RETURNS VOID AS $$
 DECLARE
@@ -77,12 +79,11 @@ BEGIN
   FOR i IN 1..num_tables LOOP
     EXECUTE format(
       $sql$
-      CREATE TYPE custom_type_%s AS ENUM ('Type1', 'Type2', 'Type3');
       CREATE TABLE %s.table%s (
         id serial primary key,
         column1 int,
         column2 varchar(255),
-        column3 custom_type_%s,
+        column3 custom_type_1,
         column4 text,
         column5 boolean,
         column6 date,
@@ -91,7 +92,7 @@ BEGIN
         column9 json,
         column10 jsonb
       );
-      $sql$, i, common_tables_schema, i, i);
+      $sql$, common_tables_schema, i);
 
     -- Insert data into the tables
     IF i = 1 THEN
@@ -127,14 +128,14 @@ SELECT create_common_tables_and_types(:'common_tables_schema'::TEXT, :'num_commo
 -- Create Hypertables and insert data.
 CREATE SCHEMA IF NOT EXISTS :hypertables_schema;
 
-CREATE OR REPLACE FUNCTION create_hypertables_and_insert_data(
+CREATE OR REPLACE PROCEDURE create_hypertables_and_insert_data(
     common_tables_schema TEXT,
     num_hypertables INTEGER,
     hypertables_schema VARCHAR,
     chunk_interval INTERVAL,
     start_time TIMESTAMP,
     end_time TIMESTAMP
-) RETURNS VOID AS $$
+) AS $$
 DECLARE
     count integer;
 BEGIN
@@ -175,12 +176,14 @@ BEGIN
         EXECUTE format('SELECT create_hypertable(%L, %L, chunk_time_interval => interval %L, migrate_data => true);',
                 hypertables_schema || '.table_' || count, 'time', chunk_interval);
 
+        COMMIT;
+
         RAISE NOTICE 'Completed hypertable: %.table_%', hypertables_schema, count;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT create_hypertables_and_insert_data(
+CALL create_hypertables_and_insert_data(
     :'common_tables_schema'::TEXT,
     :'num_hypertables'::INTEGER,
     :'hypertables_schema'::VARCHAR,
@@ -188,6 +191,15 @@ SELECT create_hypertables_and_insert_data(
     :'start_time'::TIMESTAMP,
     :'end_time'::TIMESTAMP
 );
+
+-- CALL create_hypertables_and_insert_data(
+--     'common'::TEXT,
+--     50::INTEGER,
+--     'timeseries'::VARCHAR,
+--     '4 weeks'::INTERVAL,
+--     '2021-01-01'::TIMESTAMP,
+--     '2023-01-01'::TIMESTAMP
+-- );
 
 -- Create compression and retention policies.
 CREATE OR REPLACE FUNCTION create_compression_retention_policies(num_hypertables INTEGER, hypertables_schema VARCHAR, ignore_compression BOOLEAN)
