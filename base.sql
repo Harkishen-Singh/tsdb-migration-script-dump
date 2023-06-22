@@ -13,6 +13,7 @@ psql -d "URI" -f base.sql \
     -v num_hypertables=20 \
     -v ignore_compression_policies=1 \
     -v chunk_interval='1 week' \
+    -v resoluton='1 minute' \
     -v start_time='2023-01-01' \
     -v end_time='2023-03-31'
 
@@ -37,6 +38,10 @@ Supported flags:
     chunk_interval [required]
         Chunk interval of the Hypertables created.
         Eg: '1 week'
+
+    resolution [required]
+        Intervals in which samples should be created.
+        Eg: '10 seconds'
 
     start_time [required]
         Start writing data into the created Hypertables from 'start_time' time.
@@ -133,6 +138,7 @@ CREATE OR REPLACE PROCEDURE create_hypertables_and_insert_data(
     num_hypertables INTEGER,
     hypertables_schema VARCHAR,
     chunk_interval INTERVAL,
+    resolution INTERVAL,
     start_time TIMESTAMP,
     end_time TIMESTAMP
 ) AS $$
@@ -170,7 +176,7 @@ BEGIN
                     json_build_object('key', md5(random()::text)) AS col7,
                     json_build_object('key', md5(random()::text)) AS col8;
                 $sql$,
-            hypertables_schema, count, start_time, end_time, '1 minute');
+            hypertables_schema, count, start_time, end_time, resolution);
         ELSE
             EXECUTE format('INSERT INTO %I.table_%s SELECT * FROM %I.table_1;',
             hypertables_schema, count, hypertables_schema);
@@ -191,18 +197,10 @@ CALL create_hypertables_and_insert_data(
     :'num_hypertables'::INTEGER,
     :'hypertables_schema'::VARCHAR,
     :'chunk_interval'::INTERVAL,
+    :'resolution'::INTERVAL,
     :'start_time'::TIMESTAMP,
     :'end_time'::TIMESTAMP
 );
-
--- CALL create_hypertables_and_insert_data(
---     'common'::TEXT,
---     50::INTEGER,
---     'timeseries'::VARCHAR,
---     '4 weeks'::INTERVAL,
---     '2021-01-01'::TIMESTAMP,
---     '2023-01-01'::TIMESTAMP
--- );
 
 -- Create compression and retention policies.
 CREATE OR REPLACE FUNCTION create_compression_retention_policies(num_hypertables INTEGER, hypertables_schema VARCHAR, ignore_compression BOOLEAN)
